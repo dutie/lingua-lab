@@ -1,0 +1,19 @@
+# Secrets
+.env
+
+# Server data — ephemeral, rebuilt by containers
+audiobookshelf/audiobooks/
+audiobookshelf/podcasts/
+audiobookshelf/metadata/
+audiobookshelf/config/
+tailscale/state/
+
+# Obsidian per-device state
+vault/.obsidian/workspace*
+vault/.obsidian/cache
+vault/.obsidian/app.json
+vault/.trash/
+
+# OS cruft
+.DS_Store
+Thumbs.db

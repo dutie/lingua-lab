@@ -1,0 +1,57 @@
+services:
+  # Tailscale: private mesh network so your phone can reach the server
+  # from anywhere (home LAN, 4G, coffee shop) using a stable 100.x.y.z IP
+  # that never changes.
+  #
+  # First-time setup:
+  #   1. Sign up at https://tailscale.com (free, use Google/GitHub login)
+  #   2. Get an auth key at https://login.tailscale.com/admin/settings/keys
+  #      Mark it "Reusable" and "Ephemeral: off" so this node is stable.
+  #   3. Create a file called `.env` next to this docker-compose.yml with:
+  #        TS_AUTHKEY=tskey-auth-XXXXXXXXXXXXX
+  #   4. docker compose up -d
+  #   5. Install Tailscale on your phone, sign in with the same account.
+  #      Now your phone can reach this container at `lingua-lab` (MagicDNS)
+  #      or at the 100.x.y.z IP shown in the Tailscale admin console.
+  #
+  # This container shares its network namespace with audiobookshelf,
+  # so ABS is reachable at http://lingua-lab:13378 from your phone.
+  tailscale:
+    image: tailscale/tailscale:latest
+    container_name: lingua-tailscale
+    hostname: lingua-lab
+    environment:
+      - TS_AUTHKEY=${TS_AUTHKEY}
+      - TS_STATE_DIR=/var/lib/tailscale
+      - TS_USERSPACE=false
+      - TS_EXTRA_ARGS=--advertise-tags=tag:home-server
+    volumes:
+      - ./tailscale/state:/var/lib/tailscale
+      - /dev/net/tun:/dev/net/tun
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    restart: unless-stopped
+
+  # Audiobookshelf: podcast + audiobook server
+  # Accessed via Tailscale at http://lingua-lab:13378 (phone, anywhere)
+  # or http://localhost:13378 on the server itself.
+  #
+  # network_mode: service:tailscale routes all ABS traffic through the
+  # Tailscale container. This means ABS is ONLY reachable via Tailscale —
+  # not on the local LAN, not on the public internet. Exactly what we want.
+  audiobookshelf:
+    image: ghcr.io/advplyr/audiobookshelf:latest
+    container_name: lingua-abs
+    depends_on:
+      - tailscale
+    network_mode: service:tailscale
+    volumes:
+      - ./audiobookshelf/audiobooks:/audiobooks
+      - ./audiobookshelf/podcasts:/podcasts
+      - ./audiobookshelf/metadata:/metadata
+      - ./audiobookshelf/config:/config
+    environment:
+      - TZ=Europe/Brussels
+      - PORT=13378
+    restart: unless-stopped
